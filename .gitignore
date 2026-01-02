@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+*.pyc
+data/events.db
+.pytest_cache/
+*.log
