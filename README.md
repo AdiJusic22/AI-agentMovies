@@ -32,6 +32,22 @@ Ovaj projekt implementira inteligentnog softverskog agenta za personalizirane pr
 - `tests/` - Unit i integration testovi
 - `data/` - SQLite baza i modeli
 
+## API Endpoints
+
+- **GET /recommend?user_id={}&session_id={}&n=10**
+  - Vraća top-N preporuka.
+  - Primjer response: `{"recommendations": [{"item_id": "item1", "score": 0.9, "reason": "Popular"}]}`
+- **POST /events** (body: JSON event)
+  - Ingestira user event za learning.
+  - Primjer body: `{"user_id": "123", "event_type": "click", "item_id": "movie1"}`
+
+## Demo
+
+Pokreni server i testiraj:
+```bash
+curl "http://localhost:8000/recommend?user_id=test&session_id=test"
+```
+
 ## GitHub
 
 Preporučujem pushati projekt na GitHub:
