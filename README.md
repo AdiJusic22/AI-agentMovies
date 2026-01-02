@@ -47,6 +47,11 @@ Pokreni server i testiraj:
 ```bash
 curl "http://localhost:8000/recommend?user_id=test&session_id=test"
 ```
+Primjer output: Preporuke popularnih filmova iz MovieLens dataseta.
+
+## Dataset
+
+Koristi MovieLens small dataset (preuzet u `data/ml-latest-small/`) za trening recommender modela.
 
 ## GitHub
 
