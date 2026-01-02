@@ -5,30 +5,192 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Personal Recommender Agent</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        #recommendations { margin-top: 20px; }
-        .item { border: 1px solid #ccc; padding: 10px; margin: 5px; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+        h1 {
+            text-align: center;
+            color: #4a5568;
+            margin-bottom: 30px;
+        }
+        .description {
+            background: #f7fafc;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            border-left: 4px solid #667eea;
+        }
+        .input-group {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 16px;
+            min-width: 200px;
+        }
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        #recommendations {
+            margin-top: 30px;
+        }
+        .recommendation-card {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 10px 0;
+            transition: box-shadow 0.3s;
+        }
+        .recommendation-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .item-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #2d3748;
+            margin-bottom: 8px;
+        }
+        .item-score {
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .item-reason {
+            color: #718096;
+            font-style: italic;
+        }
+        .loading {
+            text-align: center;
+            color: #667eea;
+            font-size: 18px;
+        }
+        .error {
+            background: #fed7d7;
+            color: #c53030;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
-    <h1>Personal Recommender Agent</h1>
-    <p>Unesi user_id i session_id za preporuke:</p>
-    <input type="text" id="userId" placeholder="user_id" value="test">
-    <input type="text" id="sessionId" placeholder="session_id" value="test">
-    <button onclick="getRecommendations()">Get Recommendations</button>
-    <div id="recommendations"></div>
+    <div class="container">
+        <h1>🎬 Personal Recommender Agent</h1>
+        
+        <div class="description">
+            <h3>Što radi agent?</h3>
+            <p>Ovaj agent preporučuje filmove koristeći MovieLens dataset. Unesi <strong>user_id</strong> (npr. "1") i <strong>session_id</strong> (npr. "session1") — agent vraća top-10 preporuka s ocjenama i razlozima.</p>
+            <p><strong>Unosiš:</strong> user_id i session_id (stringovi).</p>
+            <p><strong>Vraća:</strong> JSON array s item_id (film ID), score (popularnost), reason ("Popular").</p>
+        </div>
+
+        <div class="input-group">
+            <input type="text" id="userId" placeholder="user_id (npr. 1)" value="1">
+            <input type="text" id="sessionId" placeholder="session_id (npr. session1)" value="session1">
+            <button onclick="getRecommendations()" id="btn">Get Recommendations</button>
+        </div>
+
+        <div id="recommendations"></div>
+    </div>
 
     <script>
         async function getRecommendations() {
-            const userId = document.getElementById('userId').value;
-            const sessionId = document.getElementById('sessionId').value;
-            const response = await fetch(`/recommend?user_id=${userId}&session_id=${sessionId}`);
-            const data = await response.json();
+            const btn = document.getElementById('btn');
+            const userId = document.getElementById('userId').value.trim();
+            const sessionId = document.getElementById('sessionId').value.trim();
+            
+            if (!userId || !sessionId) {
+                showError('Unesi user_id i session_id!');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Loading...';
+            
+            try {
+                const response = await fetch(`/recommend?user_id=${encodeURIComponent(userId)}&session_id=${encodeURIComponent(sessionId)}`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    showError(data.error);
+                } else {
+                    displayRecommendations(data);
+                }
+            } catch (error) {
+                showError('Greška u povezivanju s serverom.');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Get Recommendations';
+            }
+        }
+
+        function displayRecommendations(recommendations) {
             const div = document.getElementById('recommendations');
-            div.innerHTML = data.map(item => 
-                `<div class="item"><strong>${item.item_id}</strong> - Score: ${item.score} - ${item.reason}</div>`
+            if (recommendations.length === 0) {
+                div.innerHTML = '<p>Nema preporuka.</p>';
+                return;
+            }
+            div.innerHTML = recommendations.map(item => 
+                `<div class="recommendation-card">
+                    <div class="item-title">${item.title || item.item_id}</div>
+                    <div class="item-score">Score: ${item.score.toFixed(2)}</div>
+                    <div class="item-reason">Reason: ${item.reason}</div>
+                </div>`
             ).join('');
         }
+
+        function showError(message) {
+            const div = document.getElementById('recommendations');
+            div.innerHTML = `<div class="error">${message}</div>`;
+        }
+
+        // Enter key support
+        document.getElementById('userId').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') getRecommendations();
+        });
+        document.getElementById('sessionId').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') getRecommendations();
+        });
     </script>
 </body>
 </html>
