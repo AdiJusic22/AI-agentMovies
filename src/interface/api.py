@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Depends
+from fastapi.staticfiles import StaticFiles
 from src.application.orchestrator import Orchestrator
 from src.infrastructure.recommender_impl import MLRecommender
 from src.infrastructure.learner_impl import DummyLearner
@@ -6,6 +7,9 @@ from src.infrastructure.sensor_impl import DummySensor
 from src.infrastructure.actuator_impl import DummyActuator
 
 app = FastAPI()
+
+# Serve static files
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Dependency injection
 def get_orchestrator():
@@ -15,6 +19,10 @@ def get_orchestrator():
         sensor=DummySensor(),
         actuator=DummyActuator()
     )
+
+@app.get("/")
+def read_root():
+    return {"message": "Personal Recommender Agent", "ui": "/static/index.html"}
 
 @app.get("/recommend")
 def recommend(user_id: str, session_id: str, orchestrator: Orchestrator = Depends(get_orchestrator)):
