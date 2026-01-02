@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends
 from src.application.orchestrator import Orchestrator
-from src.infrastructure.recommender_impl import DummyRecommender
+from src.infrastructure.recommender_impl import MLRecommender
 from src.infrastructure.learner_impl import DummyLearner
 from src.infrastructure.sensor_impl import DummySensor
 from src.infrastructure.actuator_impl import DummyActuator
@@ -10,7 +10,7 @@ app = FastAPI()
 # Dependency injection
 def get_orchestrator():
     return Orchestrator(
-        recommender=DummyRecommender(),
+        recommender=MLRecommender(),
         learner=DummyLearner(),
         sensor=DummySensor(),
         actuator=DummyActuator()
