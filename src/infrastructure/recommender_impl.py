@@ -3,6 +3,7 @@ from sklearn.neighbors import NearestNeighbors
 import pandas as pd
 import numpy as np
 import os
+import openai
 
 class MLRecommender(Recommender):
     def __init__(self):
@@ -19,6 +20,7 @@ class MLRecommender(Recommender):
             ratings = pd.read_csv(f'{data_path}/ratings.csv')
             movies = pd.read_csv(f'{data_path}/movies.csv')
             self.movies = movies.set_index('movieId')['title'].to_dict()
+            self.genres = movies.set_index('movieId')['genres'].to_dict()
             # Create user-item matrix
             self.ratings_matrix = ratings.pivot(index='userId', columns='movieId', values='rating').fillna(0)
             self.item_ids = self.ratings_matrix.columns.tolist()
@@ -32,7 +34,7 @@ class MLRecommender(Recommender):
     def recommend(self, user_id: str, session_id: str, n: int = 10) -> list[dict[str, any]]:
         if self.model is None:
             # Dummy fallback
-            return [{"item_id": f"movie_{i}", "title": f"Movie {i}", "score": 1.0 - i*0.1, "reason": "Popular"} for i in range(n)]
+            return [{"item_id": f"movie_{i}", "title": f"Movie {i}", "genres": "", "score": 1.0 - i*0.1, "reason": "Popular", "llm_description": "A great movie!", "agent_mood": "Fallback mode – enjoy!"} for i in range(n)]
         
         # Simple user-based: recommend movies similar to user's top-rated
         try:
@@ -49,8 +51,11 @@ class MLRecommender(Recommender):
                             {
                                 "item_id": str(movie_id),
                                 "title": self.movies.get(int(movie_id), f"Movie {movie_id}"),
+                                "genres": self.genres.get(int(movie_id), ""),
                                 "score": self.ratings_matrix.loc[:, movie_id].mean(),  # Use mean rating as score
-                                "reason": f"Similar to your top movie: {self.movies.get(int(top_movie), top_movie)}"
+                                "reason": f"Similar to your top movie: {self.movies.get(int(top_movie), top_movie)}",
+                                "llm_description": self.get_llm_description(self.movies.get(int(movie_id), f"Movie {movie_id}"), self.genres.get(int(movie_id), "")),
+                                "agent_mood": "Excited to recommend this based on your taste!"
                             }
                             for movie_id in similar_movies
                         ]
@@ -63,8 +68,31 @@ class MLRecommender(Recommender):
             {
                 "item_id": str(item_id),
                 "title": self.movies.get(int(item_id), f"Movie {item_id}"),
+                "genres": self.genres.get(int(item_id), ""),
                 "score": score,
-                "reason": "Popular"
+                "reason": "Popular",
+                "llm_description": self.get_llm_description(self.movies.get(int(item_id), f"Movie {item_id}"), self.genres.get(int(item_id), "")),
+                "agent_mood": "These are crowd favorites – hope you like them!"
             }
             for item_id, score in popular_items.items()
         ]
+
+    def update_model(self):
+        # Dummy: retrain sa novim podacima (za sada samo reload)
+        self._load_data()
+        # U realnom: append new ratings i retrain KNN
+
+    def get_llm_description(self, movie_title: str, genres: str) -> str:
+        # Dummy LLM: opis filma
+        try:
+            client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "You are a movie recommender AI. Describe why a user might like this movie based on title and genres. Keep it short."},
+                    {"role": "user", "content": f"Movie: {movie_title}, Genres: {genres}"}
+                ]
+            )
+            return response.choices[0].message.content
+        except:
+            return f"This {genres.lower()} movie '{movie_title}' is highly rated and might appeal to fans of similar films."
