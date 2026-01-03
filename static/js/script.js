@@ -1,8 +1,14 @@
 document.addEventListener('DOMContentLoaded', function() {
     const getRecommendationsBtn = document.getElementById('getRecommendations');
+    const newSessionBtn = document.getElementById('newSession');
     const userIdInput = document.getElementById('userId');
     const sessionIdInput = document.getElementById('sessionId');
     const recommendationsDiv = document.getElementById('recommendations');
+
+    newSessionBtn.addEventListener('click', function() {
+        const randomId = 'session' + Math.random().toString(36).substr(2, 9);
+        sessionIdInput.value = randomId;
+    });
 
     getRecommendationsBtn.addEventListener('click', async function() {
         const userId = userIdInput.value.trim();
@@ -42,7 +48,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             recDiv.innerHTML = `
                 <div class="agent-mood">${rec.agent_mood || 'Here\'s a recommendation!'}</div>
-                <h3>${rec.title}</h3>
+                <h3>${rec.title} (${rec.year})</h3>
                 <p><strong>Genres:</strong> ${rec.genres || 'N/A'}</p>
                 <p><strong>Score:</strong> ${rec.score ? rec.score.toFixed(2) : 'N/A'}</p>
                 <p><strong>Reason:</strong> ${rec.reason}</p>

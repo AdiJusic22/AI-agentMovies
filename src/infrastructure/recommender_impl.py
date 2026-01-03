@@ -18,6 +18,8 @@ class MLRecommender(Recommender):
             "sad": ["Drama", "Romance"],
             "angry": ["Action", "Thriller", "Crime"],
             "excited": ["Adventure", "Sci-Fi", "Fantasy"],
+            "relaxed": ["Documentary", "Family"],
+            "scared": ["Horror"],
             "neutral": []  # All genres
         }
         self._load_data()
@@ -30,6 +32,18 @@ class MLRecommender(Recommender):
             movies = pd.read_csv(f'{data_path}/movies.csv')
             self.movies = movies.set_index('movieId')['title'].to_dict()
             self.genres = movies.set_index('movieId')['genres'].to_dict()
+            self.years = {}
+            for _, row in movies.iterrows():
+                title = row['title']
+                # Extract year from title, e.g., "Toy Story (1995)" -> 1995
+                if '(' in title and title.endswith(')'):
+                    try:
+                        year = int(title.split('(')[-1].strip(')'))
+                        self.years[row['movieId']] = year
+                    except:
+                        self.years[row['movieId']] = None
+                else:
+                    self.years[row['movieId']] = None
             # Create user-item matrix
             self.ratings_matrix = ratings.pivot(index='userId', columns='movieId', values='rating').fillna(0)
             self.item_ids = self.ratings_matrix.columns.tolist()            # Load feedback from DB and add to matrix
@@ -54,7 +68,7 @@ class MLRecommender(Recommender):
     def recommend(self, user_id: str, session_id: str, mood: str = "neutral", n: int = 10) -> list[dict[str, any]]:
         if self.model is None:
             # Dummy fallback
-            return [{"item_id": f"movie_{i}", "title": f"Movie {i}", "genres": "", "score": 1.0 - i*0.1, "reason": "Popular", "llm_description": "A great movie!", "agent_mood": "Fallback mode – enjoy!"} for i in range(n)]
+            return [{"item_id": f"movie_{i}", "title": f"Movie {i}", "year": "Unknown", "genres": "", "score": 1.0 - i*0.1, "reason": "Popular", "llm_description": "A great movie!", "agent_mood": "Fallback mode – enjoy!"} for i in range(n)]
         
         # Simple user-based: recommend movies similar to user's top-rated
         try:
@@ -75,6 +89,7 @@ class MLRecommender(Recommender):
                             {
                                 "item_id": str(movie_id),
                                 "title": self.movies.get(int(movie_id), f"Movie {movie_id}"),
+                                "year": self.years.get(int(movie_id), "Unknown"),
                                 "genres": self.genres.get(int(movie_id), ""),
                                 "score": self.ratings_matrix.loc[:, movie_id].mean(),  # Use mean rating as score
                                 "reason": f"Similar to your top movie: {self.movies.get(int(top_movie), top_movie)}",
@@ -96,6 +111,7 @@ class MLRecommender(Recommender):
             {
                 "item_id": str(item_id),
                 "title": self.movies.get(int(item_id), f"Movie {item_id}"),
+                "year": self.years.get(int(item_id), "Unknown"),
                 "genres": self.genres.get(int(item_id), ""),
                 "score": popular_items.get(item_id, 0),
                 "reason": "Popular",
