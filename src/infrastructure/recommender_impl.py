@@ -3,7 +3,8 @@ from sklearn.neighbors import NearestNeighbors
 import pandas as pd
 import numpy as np
 import os
-import openai
+from src.infrastructure.db import SessionLocal, FeedbackModel
+# import openai  # Removed for now
 
 class MLRecommender(Recommender):
     def __init__(self):
@@ -23,8 +24,19 @@ class MLRecommender(Recommender):
             self.genres = movies.set_index('movieId')['genres'].to_dict()
             # Create user-item matrix
             self.ratings_matrix = ratings.pivot(index='userId', columns='movieId', values='rating').fillna(0)
-            self.item_ids = self.ratings_matrix.columns.tolist()
-            # Fit KNN model
+            self.item_ids = self.ratings_matrix.columns.tolist()            # Load feedback from DB and add to matrix
+            db = SessionLocal()
+            try:
+                feedbacks = db.query(FeedbackModel).all()
+                for fb in feedbacks:
+                    user_id = int(fb.user_id)
+                    movie_id = int(fb.item_id)
+                    if user_id in self.ratings_matrix.index and movie_id in self.ratings_matrix.columns:
+                        self.ratings_matrix.loc[user_id, movie_id] = fb.rating
+            except Exception as e:
+                print(f"Error loading feedback: {e}")
+            finally:
+                db.close()            # Fit KNN model
             self.model = NearestNeighbors(n_neighbors=10, algorithm='brute', metric='cosine')
             self.model.fit(self.ratings_matrix.T)  # Item-based
         else:
@@ -62,8 +74,10 @@ class MLRecommender(Recommender):
         except (ValueError, KeyError):
             pass
         
-        # Fallback to popular
-        popular_items = self.ratings_matrix.mean().sort_values(ascending=False).head(n)
+        # Fallback to popular, filter disliked
+        disliked = self._get_disliked_movies(user_id)
+        popular_items = self.ratings_matrix.mean().sort_values(ascending=False)
+        popular_items = popular_items[~popular_items.index.isin(disliked)].head(n)
         return [
             {
                 "item_id": str(item_id),
@@ -83,16 +97,16 @@ class MLRecommender(Recommender):
         # U realnom: append new ratings i retrain KNN
 
     def get_llm_description(self, movie_title: str, genres: str) -> str:
-        # Dummy LLM: opis filma
+        # Dummy LLM: opis filma bez API
+        return f"This {genres.lower()} movie '{movie_title}' is highly rated and might appeal to fans of similar films."
+
+    def _get_disliked_movies(self, user_id: str) -> set:
+        db = SessionLocal()
         try:
-            client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-            response = client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": "You are a movie recommender AI. Describe why a user might like this movie based on title and genres. Keep it short."},
-                    {"role": "user", "content": f"Movie: {movie_title}, Genres: {genres}"}
-                ]
-            )
-            return response.choices[0].message.content
-        except:
-            return f"This {genres.lower()} movie '{movie_title}' is highly rated and might appeal to fans of similar films."
+            feedbacks = db.query(FeedbackModel).filter(FeedbackModel.user_id == user_id, FeedbackModel.rating <= 2).all()
+            return {int(fb.item_id) for fb in feedbacks}
+        except Exception as e:
+            print(f"Error getting disliked: {e}")
+            return set()
+        finally:
+            db.close()

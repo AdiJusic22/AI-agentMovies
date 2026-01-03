@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, String, DateTime, Text
+from sqlalchemy import create_engine, Column, String, DateTime, Text, Integer
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
@@ -15,7 +15,16 @@ class EventModel(Base):
     timestamp = Column(DateTime)
     context = Column(Text)
 
-engine = create_engine('sqlite:///data/events.db')
+class FeedbackModel(Base):
+    __tablename__ = 'feedback'
+    id = Column(String, primary_key=True)
+    user_id = Column(String)
+    item_id = Column(String)
+    rating = Column(Integer)
+    session_id = Column(String)
+    timestamp = Column(DateTime)
+
+engine = create_engine('sqlite:///data/feedback.db')
 Base.metadata.create_all(engine)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
