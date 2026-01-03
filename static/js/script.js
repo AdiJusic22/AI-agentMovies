@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', function() {
     getRecommendationsBtn.addEventListener('click', async function() {
         const userId = userIdInput.value.trim();
         const sessionId = sessionIdInput.value.trim();
+        const mood = document.getElementById('mood').value;
 
         if (!userId || !sessionId) {
             showError('Please enter both User ID and Session ID');
@@ -14,7 +15,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         try {
-            const response = await fetch(`/recommend?user_id=${encodeURIComponent(userId)}&session_id=${encodeURIComponent(sessionId)}`);
+            const response = await fetch(`/recommend?user_id=${encodeURIComponent(userId)}&session_id=${encodeURIComponent(sessionId)}&mood=${encodeURIComponent(mood)}`);
             const data = await response.json();
 
             if (response.ok) {

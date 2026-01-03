@@ -7,11 +7,11 @@ class Orchestrator:
         self.sensor = sensor
         self.actuator = actuator
 
-    def step(self, user_id: str, session_id: str) -> List[Dict[str, Any]]:
+    def step(self, user_id: str, session_id: str, mood: str = "neutral") -> List[Dict[str, Any]]:
         # Sense
         data = self.sensor.sense()
         # Think
-        recommendations = self.recommender.recommend(user_id, session_id)
+        recommendations = self.recommender.recommend(user_id, session_id, mood)
         # Act
         self.actuator.act(recommendations)
         # Learn (from data)

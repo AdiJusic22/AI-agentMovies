@@ -12,6 +12,14 @@ class MLRecommender(Recommender):
         self.ratings_matrix = None
         self.item_ids = None
         self.movies = None
+        self.genres = None
+        self.mood_genres = {
+            "happy": ["Comedy", "Animation", "Musical"],
+            "sad": ["Drama", "Romance"],
+            "angry": ["Action", "Thriller", "Crime"],
+            "excited": ["Adventure", "Sci-Fi", "Fantasy"],
+            "neutral": []  # All genres
+        }
         self._load_data()
 
     def _load_data(self):
@@ -43,7 +51,7 @@ class MLRecommender(Recommender):
             # Fallback to dummy
             pass
 
-    def recommend(self, user_id: str, session_id: str, n: int = 10) -> list[dict[str, any]]:
+    def recommend(self, user_id: str, session_id: str, mood: str = "neutral", n: int = 10) -> list[dict[str, any]]:
         if self.model is None:
             # Dummy fallback
             return [{"item_id": f"movie_{i}", "title": f"Movie {i}", "genres": "", "score": 1.0 - i*0.1, "reason": "Popular", "llm_description": "A great movie!", "agent_mood": "Fallback mode – enjoy!"} for i in range(n)]
@@ -59,6 +67,10 @@ class MLRecommender(Recommender):
                         # Find similar movies using KNN
                         distances, indices = self.model.kneighbors(self.ratings_matrix.T.loc[[top_movie]], n_neighbors=n+1)
                         similar_movies = self.ratings_matrix.T.iloc[indices[0][1:]].index  # Skip self
+                        # Filter out disliked
+                        similar_movies = [m for m in similar_movies if m not in disliked][:n]
+                        # Filter by mood
+                        similar_movies = self._filter_by_mood(similar_movies, mood)
                         return [
                             {
                                 "item_id": str(movie_id),
@@ -77,18 +89,20 @@ class MLRecommender(Recommender):
         # Fallback to popular, filter disliked
         disliked = self._get_disliked_movies(user_id)
         popular_items = self.ratings_matrix.mean().sort_values(ascending=False)
-        popular_items = popular_items[~popular_items.index.isin(disliked)].head(n)
+        popular_items = popular_items[~popular_items.index.isin(disliked)].head(n*2)  # More to filter
+        movie_ids = list(popular_items.index)
+        movie_ids = self._filter_by_mood(movie_ids, mood)
         return [
             {
                 "item_id": str(item_id),
                 "title": self.movies.get(int(item_id), f"Movie {item_id}"),
                 "genres": self.genres.get(int(item_id), ""),
-                "score": score,
+                "score": popular_items.get(item_id, 0),
                 "reason": "Popular",
                 "llm_description": self.get_llm_description(self.movies.get(int(item_id), f"Movie {item_id}"), self.genres.get(int(item_id), "")),
                 "agent_mood": "These are crowd favorites – hope you like them!"
             }
-            for item_id, score in popular_items.items()
+            for item_id in movie_ids
         ]
 
     def update_model(self):
@@ -100,13 +114,13 @@ class MLRecommender(Recommender):
         # Dummy LLM: opis filma bez API
         return f"This {genres.lower()} movie '{movie_title}' is highly rated and might appeal to fans of similar films."
 
-    def _get_disliked_movies(self, user_id: str) -> set:
-        db = SessionLocal()
-        try:
-            feedbacks = db.query(FeedbackModel).filter(FeedbackModel.user_id == user_id, FeedbackModel.rating <= 2).all()
-            return {int(fb.item_id) for fb in feedbacks}
-        except Exception as e:
-            print(f"Error getting disliked: {e}")
-            return set()
-        finally:
-            db.close()
+    def _filter_by_mood(self, movie_ids: list, mood: str) -> list:
+        if mood == "neutral":
+            return movie_ids
+        target_genres = self.mood_genres.get(mood, [])
+        filtered = []
+        for mid in movie_ids:
+            movie_genres = self.genres.get(int(mid), "").split("|")
+            if any(g in target_genres for g in movie_genres):
+                filtered.append(mid)
+        return filtered[:10]  # Limit to 10

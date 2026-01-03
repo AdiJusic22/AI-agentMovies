@@ -25,13 +25,13 @@ def read_root():
     return {"message": "Personal Recommender Agent", "ui": "/static/index.html"}
 
 @app.get("/recommend")
-def recommend(user_id: str, session_id: str, orchestrator: Orchestrator = Depends(get_orchestrator)):
+def recommend(user_id: str, session_id: str, mood: str = "neutral", orchestrator: Orchestrator = Depends(get_orchestrator)):
     try:
         # Validate user_id
         user_id_int = int(user_id)
         if user_id_int not in orchestrator.recommender.ratings_matrix.index:
             return {"error": f"User {user_id} not found in dataset. Valid users: 1-610"}
-        return orchestrator.step(user_id, session_id)
+        return orchestrator.step(user_id, session_id, mood)
     except ValueError:
         return {"error": "Invalid user_id, must be integer"}
     except Exception as e:
