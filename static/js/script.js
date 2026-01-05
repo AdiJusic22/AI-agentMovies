@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         try {
-            const response = await fetch(`http://localhost:8000/recommend?user_id=${encodeURIComponent(userId)}&session_id=${encodeURIComponent(sessionId)}&mood=${encodeURIComponent(mood)}`);
+            const response = await fetch(`/recommend?user_id=${encodeURIComponent(userId)}&session_id=${encodeURIComponent(sessionId)}&mood=${encodeURIComponent(mood)}`);
 
             const data = await response.json();
 
