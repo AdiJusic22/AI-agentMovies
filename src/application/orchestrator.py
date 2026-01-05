@@ -1,4 +1,5 @@
 from src.domain.interfaces import Recommender, Learner, Sensor, Actuator
+from typing import List, Dict, Any
 
 class Orchestrator:
     def __init__(self, recommender: Recommender, learner: Learner, sensor: Sensor, actuator: Actuator):

@@ -70,6 +70,9 @@ class MLRecommender(Recommender):
             # Dummy fallback
             return [{"item_id": f"movie_{i}", "title": f"Movie {i}", "year": "Unknown", "genres": "", "score": 1.0 - i*0.1, "reason": "Popular", "llm_description": "A great movie!", "agent_mood": "Fallback mode – enjoy!"} for i in range(n)]
         
+        # Get disliked movies for user
+        disliked = self._get_disliked_movies(user_id)
+        
         # Simple user-based: recommend movies similar to user's top-rated
         try:
             user_id_int = int(user_id)

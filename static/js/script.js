@@ -22,8 +22,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
         try {
             const response = await fetch(`/recommend?user_id=${encodeURIComponent(userId)}&session_id=${encodeURIComponent(sessionId)}&mood=${encodeURIComponent(mood)}`);
-
+            console.log('Response status:', response.status);
+            
             const data = await response.json();
+            console.log('Data:', data);
 
             if (response.ok) {
                 displayRecommendations(data);
@@ -31,12 +33,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 showError(data.error || 'An error occurred');
             }
         } catch (error) {
-            showError('Failed to fetch recommendations');
+            console.error('Fetch error:', error);
+            showError('Failed to fetch recommendations: ' + error.message);
         }
     });
 
     function displayRecommendations(recommendations) {
+        console.log('displayRecommendations called with:', recommendations);
+        console.log('Type:', typeof recommendations);
+        console.log('Is array:', Array.isArray(recommendations));
+        
         recommendationsDiv.innerHTML = '';
+
+        if (!Array.isArray(recommendations)) {
+            showError('Invalid response format');
+            return;
+        }
 
         if (recommendations.length === 0) {
             recommendationsDiv.innerHTML = '<p>No recommendations available.</p>';
