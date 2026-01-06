@@ -5,15 +5,15 @@ from datetime import datetime
 
 class DummyLearner(Learner):
     def learn(self, event: Dict[str, Any]) -> None:
-        # Spremi feedback u DB
+        # Spremi feedback u DB sa user_name i mood
         db = SessionLocal()
         try:
             feedback = FeedbackModel(
-                id=f"{event['user_id']}_{event['item_id']}_{datetime.now().isoformat()}",
-                user_id=event['user_id'],
+                id=f"{event['name']}_{event['item_id']}_{event['mood']}_{datetime.now().isoformat()}",
+                user_name=event['name'],
                 item_id=event['item_id'],
                 rating=event['rating'],
-                session_id=event.get('session_id', ''),
+                mood=event['mood'],
                 timestamp=datetime.now()
             )
             db.add(feedback)

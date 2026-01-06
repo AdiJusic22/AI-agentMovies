@@ -3,7 +3,7 @@ from typing import List, Dict, Any
 
 class Recommender(ABC):
     @abstractmethod
-    def recommend(self, user_id: str, session_id: str, n: int = 10) -> List[Dict[str, Any]]:
+    def recommend(self, user_name: str, mood: str = "neutral", n: int = 10) -> List[Dict[str, Any]]:
         pass
 
 class Learner(ABC):

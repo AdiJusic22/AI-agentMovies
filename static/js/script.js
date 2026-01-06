@@ -1,44 +1,39 @@
 document.addEventListener('DOMContentLoaded', function() {
     const getRecommendationsBtn = document.getElementById('getRecommendations');
-    const newSessionBtn = document.getElementById('newSession');
-    const userIdInput = document.getElementById('userId');
-    const sessionIdInput = document.getElementById('sessionId');
+    const userNameInput = document.getElementById('userName');
     const recommendationsDiv = document.getElementById('recommendations');
 
-    newSessionBtn.addEventListener('click', function() {
-        const randomId = 'session' + Math.random().toString(36).substr(2, 9);
-        sessionIdInput.value = randomId;
-    });
-
     getRecommendationsBtn.addEventListener('click', async function() {
-        const userId = userIdInput.value.trim();
-        const sessionId = sessionIdInput.value.trim();
+        const userName = userNameInput.value.trim();
         const mood = document.getElementById('mood').value;
 
-        if (!userId || !sessionId) {
-            showError('Please enter both User ID and Session ID');
+        if (!userName) {
+            showError('Please enter your name');
             return;
         }
 
         try {
-            const response = await fetch(`/recommend?user_id=${encodeURIComponent(userId)}&session_id=${encodeURIComponent(sessionId)}&mood=${encodeURIComponent(mood)}`);
+            const response = await fetch(`/recommend?name=${encodeURIComponent(userName)}&mood=${encodeURIComponent(mood)}`);
             console.log('Response status:', response.status);
             
             const data = await response.json();
             console.log('Data:', data);
 
             if (response.ok) {
-                displayRecommendations(data);
+                displayRecommendations(data, userName, mood);
             } else {
                 showError(data.error || 'An error occurred');
             }
         } catch (error) {
-            console.error('Fetch error:', error);
+            console.error('Full error object:', error);
+            console.error('Error name:', error.name);
+            console.error('Error message:', error.message);
+            console.error('Error stack:', error.stack);
             showError('Failed to fetch recommendations: ' + error.message);
         }
     });
 
-    function displayRecommendations(recommendations) {
+    function displayRecommendations(recommendations, userName, mood) {
         console.log('displayRecommendations called with:', recommendations);
         console.log('Type:', typeof recommendations);
         console.log('Is array:', Array.isArray(recommendations));
@@ -74,6 +69,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
             recommendationsDiv.appendChild(recDiv);
         });
+        
+        // Store userName and mood globally for giveFeedback
+        window.currentUserName = userName;
+        window.currentMood = mood;
     }
 
     function showError(message) {
@@ -82,31 +81,33 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 async function giveFeedback(itemId, rating) {
-    const userId = document.getElementById('userId').value.trim();
-    const sessionId = document.getElementById('sessionId').value.trim();
+    const userName = window.currentUserName;
+    const mood = window.currentMood;
 
-    if (!userId || !sessionId) {
-        alert('Please enter User ID and Session ID first');
+    if (!userName || !mood) {
+        alert('Please get recommendations first');
         return;
     }
 
     try {
-        const response = await fetch('http://localhost:8000/feedback', {
+        const response = await fetch('/feedback', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                user_id: userId,
+                name: userName,
                 item_id: itemId,
                 rating: rating,
-                session_id: sessionId
+                mood: mood
             })
         });
 
         const result = await response.json();
         if (response.ok) {
             alert('Feedback recorded! Model updated.');
+            // Auto-refresh recommendations after feedback
+            document.getElementById('getRecommendations').click();
         } else {
             alert('Error: ' + (result.error || 'Unknown error'));
         }

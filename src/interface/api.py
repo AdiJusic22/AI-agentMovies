@@ -25,15 +25,11 @@ def read_root():
     return {"message": "Personal Recommender Agent", "ui": "/static/index.html"}
 
 @app.get("/recommend")
-def recommend(user_id: str, session_id: str, mood: str = "neutral", orchestrator: Orchestrator = Depends(get_orchestrator)):
+def recommend(name: str, mood: str = "neutral", orchestrator: Orchestrator = Depends(get_orchestrator)):
     try:
-        # Validate user_id
-        user_id_int = int(user_id)
-        if user_id_int not in orchestrator.recommender.ratings_matrix.index:
-            return {"error": f"User {user_id} not found in dataset. Valid users: 1-610"}
-        return orchestrator.step(user_id, session_id, mood)
-    except ValueError:
-        return {"error": "Invalid user_id, must be integer"}
+        if not name or len(name.strip()) == 0:
+            return {"error": "Name is required"}
+        return orchestrator.step(name.strip(), mood)
     except Exception as e:
         return {"error": str(e)}
 
@@ -44,13 +40,12 @@ def ingest_event(event: dict, orchestrator: Orchestrator = Depends(get_orchestra
 
 @app.post("/feedback")
 def feedback(feedback_data: dict, orchestrator: Orchestrator = Depends(get_orchestrator)):
-    # feedback_data: {"user_id": "1", "item_id": "296", "rating": 5, "session_id": "test"}
-    # Spremi u DB i retrain model ako treba
+    # feedback_data: {"name": "Adi", "item_id": "296", "rating": 5, "mood": "happy"}
     try:
         # Dodaj u learner
         orchestrator.learner.learn(feedback_data)
-        # Retrain recommender (dummy za sada)
-        orchestrator.recommender.update_model()  # Dodati metodu
+        # Retrain recommender
+        orchestrator.recommender.update_model()
         return {"status": "Feedback recorded and model updated"}
     except Exception as e:
         return {"error": str(e)}

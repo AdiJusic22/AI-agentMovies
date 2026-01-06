@@ -18,10 +18,10 @@ class EventModel(Base):
 class FeedbackModel(Base):
     __tablename__ = 'feedback'
     id = Column(String, primary_key=True)
-    user_id = Column(String)
+    user_name = Column(String)  # Ime korisnika (npr "Adi")
     item_id = Column(String)
-    rating = Column(Integer)
-    session_id = Column(String)
+    rating = Column(Integer)  # 1-5 (1-2=dislike, 4-5=like)
+    mood = Column(String)  # happy, sad, angry, etc.
     timestamp = Column(DateTime)
 
 engine = create_engine('sqlite:///data/feedback.db')
