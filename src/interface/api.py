@@ -5,6 +5,8 @@ from src.infrastructure.recommender_impl import MLRecommender
 from src.infrastructure.learner_impl import DummyLearner
 from src.infrastructure.sensor_impl import DummySensor
 from src.infrastructure.actuator_impl import DummyActuator
+from src.infrastructure.db import SessionLocal, FeedbackModel
+from collections import Counter
 
 app = FastAPI()
 
@@ -49,3 +51,42 @@ def feedback(feedback_data: dict, orchestrator: Orchestrator = Depends(get_orche
         return {"status": "Feedback recorded and model updated"}
     except Exception as e:
         return {"error": str(e)}
+
+@app.get("/stats")
+def get_stats(name: str):
+    """Get user statistics: liked, disliked, favorite mood, favorite genre"""
+    db = SessionLocal()
+    try:
+        # Get all feedback for user
+        feedbacks = db.query(FeedbackModel).filter(FeedbackModel.user_name == name).all()
+        
+        if not feedbacks:
+            return {
+                "user_name": name,
+                "total_feedback": 0,
+                "liked_count": 0,
+                "disliked_count": 0,
+                "favorite_mood": None,
+                "moods": {}
+            }
+        
+        # Calculate stats
+        liked = [f for f in feedbacks if f.rating >= 4]
+        disliked = [f for f in feedbacks if f.rating <= 2]
+        
+        # Count moods
+        mood_counts = Counter(f.mood for f in feedbacks)
+        favorite_mood = mood_counts.most_common(1)[0][0] if mood_counts else None
+        
+        return {
+            "user_name": name,
+            "total_feedback": len(feedbacks),
+            "liked_count": len(liked),
+            "disliked_count": len(disliked),
+            "favorite_mood": favorite_mood,
+            "moods": dict(mood_counts)
+        }
+    except Exception as e:
+        return {"error": str(e)}
+    finally:
+        db.close()

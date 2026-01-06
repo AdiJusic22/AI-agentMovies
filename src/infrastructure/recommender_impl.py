@@ -46,19 +46,13 @@ class MLRecommender(Recommender):
                     self.years[row['movieId']] = None
             # Create user-item matrix
             self.ratings_matrix = ratings.pivot(index='userId', columns='movieId', values='rating').fillna(0)
-            self.item_ids = self.ratings_matrix.columns.tolist()            # Load feedback from DB and add to matrix
-            db = SessionLocal()
-            try:
-                feedbacks = db.query(FeedbackModel).all()
-                for fb in feedbacks:
-                    user_id = int(fb.user_id)
-                    movie_id = int(fb.item_id)
-                    if user_id in self.ratings_matrix.index and movie_id in self.ratings_matrix.columns:
-                        self.ratings_matrix.loc[user_id, movie_id] = fb.rating
-            except Exception as e:
-                print(f"Error loading feedback: {e}")
-            finally:
-                db.close()            # Fit KNN model
+            self.item_ids = self.ratings_matrix.columns.tolist()
+
+            # Note: feedback merge into matrix is skipped because feedback now uses user_name (text),
+            # while MovieLens ratings matrix is indexed by numeric userId. We rely on the liked/disliked
+            # lists (stored per user_name + mood) for personalization instead of injecting into the matrix.
+
+            # Fit KNN model
             self.model = NearestNeighbors(n_neighbors=10, algorithm='brute', metric='cosine')
             self.model.fit(self.ratings_matrix.T)  # Item-based
         else:

@@ -54,6 +54,16 @@ document.addEventListener('DOMContentLoaded', function() {
             const recDiv = document.createElement('div');
             recDiv.className = 'recommendation';
 
+            // Create star rating HTML
+            const starsHtml = `
+                <div class="star-rating" data-item-id="${rec.item_id}">
+                    ${[1, 2, 3, 4, 5].map(star => 
+                        `<span class="star" data-value="${star}" onclick="giveStarRating('${rec.item_id}', ${star})">★</span>`
+                    ).join('')}
+                    <span class="rating-text"></span>
+                </div>
+            `;
+
             recDiv.innerHTML = `
                 <div class="agent-mood">${rec.agent_mood || 'Here\'s a recommendation!'}</div>
                 <h3>${rec.title} (${rec.year})</h3>
@@ -61,18 +71,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 <p><strong>Score:</strong> ${rec.score ? rec.score.toFixed(2) : 'N/A'}</p>
                 <p><strong>Reason:</strong> ${rec.reason}</p>
                 <p><strong>Description:</strong> ${rec.llm_description || 'No description available'}</p>
-                <div class="feedback-buttons">
-                    <button class="like-btn" onclick="giveFeedback('${rec.item_id}', 5)">Like</button>
-                    <button class="dislike-btn" onclick="giveFeedback('${rec.item_id}', 1)">Dislike</button>
-                </div>
+                ${starsHtml}
             `;
 
             recommendationsDiv.appendChild(recDiv);
         });
         
-        // Store userName and mood globally for giveFeedback
+        // Store userName and mood globally
         window.currentUserName = userName;
         window.currentMood = mood;
+        
+        // Load stats after recommendations
+        loadStats(userName);
     }
 
     function showError(message) {
@@ -80,7 +90,21 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-async function giveFeedback(itemId, rating) {
+function loadStats(userName) {
+    fetch(`/stats?name=${encodeURIComponent(userName)}`)
+        .then(r => r.json())
+        .then(data => {
+            if (!data.error) {
+                document.getElementById('totalFeedback').textContent = data.total_feedback;
+                document.getElementById('likedCount').textContent = data.liked_count;
+                document.getElementById('dislikedCount').textContent = data.disliked_count;
+                document.getElementById('favoriteMood').textContent = data.favorite_mood || '-';
+            }
+        })
+        .catch(e => console.error('Stats error:', e));
+}
+
+async function giveStarRating(itemId, rating) {
     const userName = window.currentUserName;
     const mood = window.currentMood;
 
@@ -88,6 +112,18 @@ async function giveFeedback(itemId, rating) {
         alert('Please get recommendations first');
         return;
     }
+
+    // Visual feedback: highlight stars
+    const starDiv = document.querySelector(`.star-rating[data-item-id="${itemId}"]`);
+    const stars = starDiv.querySelectorAll('.star');
+    stars.forEach((s, i) => {
+        if (i < rating) {
+            s.classList.add('active');
+        } else {
+            s.classList.remove('active');
+        }
+    });
+    starDiv.querySelector('.rating-text').textContent = `${rating}/5`;
 
     try {
         const response = await fetch('/feedback', {
@@ -105,9 +141,8 @@ async function giveFeedback(itemId, rating) {
 
         const result = await response.json();
         if (response.ok) {
-            alert('Feedback recorded! Model updated.');
-            // Auto-refresh recommendations after feedback
-            document.getElementById('getRecommendations').click();
+            // Update stats
+            loadStats(userName);
         } else {
             alert('Error: ' + (result.error || 'Unknown error'));
         }

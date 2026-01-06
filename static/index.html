@@ -18,14 +18,36 @@
             <input type="text" id="userName" placeholder="Your Name (e.g., Adi)" value="">
             <select id="mood">
                 <option value="neutral">Neutral - Any genre</option>
-                <option value="happy">Happy 😊 - Comedy, Animation, Musical</option>
-                <option value="sad">Sad 😢 - Drama, Romance</option>
-                <option value="angry">Angry 😠 - Action, Thriller, Crime</option>
-                <option value="excited">Excited 🤩 - Adventure, Sci-Fi, Fantasy</option>
-                <option value="relaxed">Relaxed 😌 - Documentary, Family</option>
-                <option value="scared">Scared 😱 - Horror</option>
+                <option value="happy">Happy - Comedy, Animation, Musical</option>
+                <option value="sad">Sad - Drama, Romance</option>
+                <option value="angry">Angry - Action, Thriller, Crime</option>
+                <option value="excited">Excited - Adventure, Sci-Fi, Fantasy</option>
+                <option value="relaxed">Relaxed - Documentary, Family</option>
+                <option value="scared">Scared - Horror</option>
             </select>
             <button id="getRecommendations">Get Recommendations</button>
+        </div>
+
+        <!-- DASHBOARD -->
+        <div id="dashboard" class="dashboard">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Total Feedbacks</h3>
+                    <p class="stat-number" id="totalFeedback">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Liked Movies</h3>
+                    <p class="stat-number" id="likedCount">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Disliked Movies</h3>
+                    <p class="stat-number" id="dislikedCount">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Favorite Mood</h3>
+                    <p class="stat-text" id="favoriteMood">-</p>
+                </div>
+            </div>
         </div>
         
         <div id="recommendations">
