@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Depends
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import RedirectResponse
 from src.application.orchestrator import Orchestrator
 from src.infrastructure.recommender_impl import MLRecommender
 from src.infrastructure.learner_impl import DummyLearner
@@ -7,6 +8,7 @@ from src.infrastructure.sensor_impl import DummySensor
 from src.infrastructure.actuator_impl import DummyActuator
 from src.infrastructure.db import SessionLocal, FeedbackModel
 from collections import Counter
+from typing import Optional
 
 app = FastAPI()
 
@@ -24,7 +26,12 @@ def get_orchestrator():
 
 @app.get("/")
 def read_root():
-    return {"message": "Personal Recommender Agent", "ui": "/static/index.html"}
+    return RedirectResponse(url="/static/index.html")
+
+@app.get("/static")
+@app.get("/static/")
+def static_root():
+    return RedirectResponse(url="/static/index.html")
 
 @app.get("/recommend")
 def recommend(name: str, mood: str = "neutral", orchestrator: Orchestrator = Depends(get_orchestrator)):
@@ -45,10 +52,14 @@ def feedback(feedback_data: dict, orchestrator: Orchestrator = Depends(get_orche
     # feedback_data: {"name": "Adi", "item_id": "296", "rating": 5, "mood": "happy"}
     try:
         # Dodaj u learner
-        orchestrator.learner.learn(feedback_data)
+        result = orchestrator.learner.learn(feedback_data)
+        if result.get("status") == "exists":
+            return {"status": "already_rated", "rating": result.get("rating")}
+        if result.get("status") == "error":
+            return {"error": result.get("error", "Unknown error")}
         # Retrain recommender
         orchestrator.recommender.update_model()
-        return {"status": "Feedback recorded and model updated"}
+        return {"status": "Feedback recorded and model updated", "rating": result.get("rating")}
     except Exception as e:
         return {"error": str(e)}
 
@@ -85,6 +96,32 @@ def get_stats(name: str):
             "disliked_count": len(disliked),
             "favorite_mood": favorite_mood,
             "moods": dict(mood_counts)
+        }
+    except Exception as e:
+        return {"error": str(e)}
+    finally:
+        db.close()
+
+
+@app.get("/ratings")
+def get_ratings(name: str, mood: Optional[str] = None):
+    """Vrati listu sacuvanih ocjena za korisnika; opcionalno filtriraj po raspolozenju."""
+    db = SessionLocal()
+    try:
+        query = db.query(FeedbackModel).filter(FeedbackModel.user_name == name)
+        if mood:
+            query = query.filter(FeedbackModel.mood == mood)
+        feedbacks = query.all()
+        return {
+            "ratings": [
+                {
+                    "item_id": f.item_id,
+                    "rating": f.rating,
+                    "mood": f.mood,
+                    "timestamp": f.timestamp.isoformat() if f.timestamp else None,
+                }
+                for f in feedbacks
+            ]
         }
     except Exception as e:
         return {"error": str(e)}

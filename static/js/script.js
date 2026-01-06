@@ -81,8 +81,9 @@ document.addEventListener('DOMContentLoaded', function() {
         window.currentUserName = userName;
         window.currentMood = mood;
         
-        // Load stats after recommendations
+        // Load stats and saved ratings after recommendations
         loadStats(userName);
+        loadRatings(userName, mood);
     }
 
     function showError(message) {
@@ -114,16 +115,7 @@ async function giveStarRating(itemId, rating) {
     }
 
     // Visual feedback: highlight stars
-    const starDiv = document.querySelector(`.star-rating[data-item-id="${itemId}"]`);
-    const stars = starDiv.querySelectorAll('.star');
-    stars.forEach((s, i) => {
-        if (i < rating) {
-            s.classList.add('active');
-        } else {
-            s.classList.remove('active');
-        }
-    });
-    starDiv.querySelector('.rating-text').textContent = `${rating}/5`;
+    setStarState(itemId, rating);
 
     try {
         const response = await fetch('/feedback', {
@@ -141,7 +133,12 @@ async function giveStarRating(itemId, rating) {
 
         const result = await response.json();
         if (response.ok) {
-            // Update stats
+            if (result.status === 'already_rated') {
+                alert(`Vec si ocijenio ovaj film s ocjenom ${result.rating}/5`);
+                setStarState(itemId, result.rating);
+            } else {
+                setStarState(itemId, rating);
+            }
             loadStats(userName);
         } else {
             alert('Error: ' + (result.error || 'Unknown error'));
@@ -149,4 +146,38 @@ async function giveStarRating(itemId, rating) {
     } catch (error) {
         alert('Failed to send feedback');
     }
+}
+
+function loadRatings(userName, mood) {
+    fetch(`/ratings?name=${encodeURIComponent(userName)}${mood ? `&mood=${encodeURIComponent(mood)}` : ''}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data && Array.isArray(data.ratings)) {
+                data.ratings.forEach(r => setStarState(r.item_id, r.rating));
+            }
+        })
+        .catch(err => console.error('loadRatings error:', err));
+}
+
+function setStarState(itemId, rating) {
+    const starDiv = document.querySelector(`.star-rating[data-item-id="${itemId}"]`);
+    if (!starDiv) return;
+    const stars = starDiv.querySelectorAll('.star');
+    stars.forEach((s, i) => {
+        if (i < rating) {
+            s.classList.add('active');
+        } else {
+            s.classList.remove('active');
+        }
+    });
+    const label = ratingLabel(rating);
+    starDiv.querySelector('.rating-text').textContent = `${rating}/5 ${label ? '- ' + label : ''}`;
+}
+
+function ratingLabel(rating) {
+    if (rating <= 2) return 'vise se ne prikazuje';
+    if (rating === 3) return 'ok';
+    if (rating >= 3.5 && rating < 4) return 'odlican';
+    if (rating >= 4) return 'voljeli';
+    return '';
 }
