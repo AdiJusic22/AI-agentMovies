@@ -12,8 +12,11 @@ from typing import Optional
 
 app = FastAPI()
 
-# Serve static files
-app.mount("/static", StaticFiles(directory="static"), name="static")
+@app.get("/")
+def read_root():
+    return RedirectResponse(url="/static/index.html")
+
+app.mount("/static", StaticFiles(directory="static", html=True), name="static")
 
 # Dependency injection
 def get_orchestrator():
@@ -24,14 +27,7 @@ def get_orchestrator():
         actuator=DummyActuator()
     )
 
-@app.get("/")
-def read_root():
-    return RedirectResponse(url="/static/index.html")
 
-@app.get("/static")
-@app.get("/static/")
-def static_root():
-    return RedirectResponse(url="/static/index.html")
 
 @app.get("/recommend")
 def recommend(name: str, mood: str = "neutral", orchestrator: Orchestrator = Depends(get_orchestrator)):
