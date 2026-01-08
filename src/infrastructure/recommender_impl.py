@@ -4,7 +4,6 @@ import pandas as pd
 import numpy as np
 import os
 from src.infrastructure.db import SessionLocal, FeedbackModel
-# import openai  # Removed for now
 
 class MLRecommender(Recommender):
     def __init__(self):
@@ -25,7 +24,6 @@ class MLRecommender(Recommender):
         self._load_data()
 
     def _load_data(self):
-        # Load MovieLens data
         data_path = 'data/ml-latest-small'
         if os.path.exists(data_path):
             ratings = pd.read_csv(f'{data_path}/ratings.csv')
@@ -35,7 +33,6 @@ class MLRecommender(Recommender):
             self.years = {}
             for _, row in movies.iterrows():
                 title = row['title']
-                # Extract year from title, e.g., "Toy Story (1995)" -> 1995
                 if '(' in title and title.endswith(')'):
                     try:
                         year = int(title.split('(')[-1].strip(')'))
@@ -44,19 +41,11 @@ class MLRecommender(Recommender):
                         self.years[row['movieId']] = None
                 else:
                     self.years[row['movieId']] = None
-            # Create user-item matrix
             self.ratings_matrix = ratings.pivot(index='userId', columns='movieId', values='rating').fillna(0)
             self.item_ids = self.ratings_matrix.columns.tolist()
-
-            # Note: feedback merge into matrix is skipped because feedback now uses user_name (text),
-            # while MovieLens ratings matrix is indexed by numeric userId. We rely on the liked/disliked
-            # lists (stored per user_name + mood) for personalization instead of injecting into the matrix.
-
-            # Fit KNN model
             self.model = NearestNeighbors(n_neighbors=10, algorithm='brute', metric='cosine')
-            self.model.fit(self.ratings_matrix.T)  # Item-based
+            self.model.fit(self.ratings_matrix.T)
         else:
-            # Fallback to dummy
             pass
 
     def recommend(self, user_name: str, mood: str = "neutral", n: int = 10) -> list[dict[str, any]]:
@@ -70,34 +59,27 @@ class MLRecommender(Recommender):
         if self.model is None:
             return [{"item_id": f"movie_{i}", "title": f"Movie {i}", "year": "Unknown", "genres": "", "score": 1.0 - i*0.1, "reason": "Popular", "llm_description": "A great movie!", "agent_mood": "Fallback mode – enjoy!"} for i in range(n)]
         
-        # Dohvati liked i disliked filmove za ovog user-a i mood
         liked = self._get_liked_movies(user_name, mood)
         disliked = self._get_disliked_movies_by_name(user_name, mood)
         
         results = []
         
-        # 1. Prvo dodaj liked filmove (sortirano po vremenu lajkovanja)
-        for movie_id in liked[:n]:  # Limit na n
+        for movie_id in liked[:n]:
             results.append({
                 "item_id": str(movie_id),
                 "title": self.movies.get(int(movie_id), f"Movie {movie_id}"),
                 "year": self.years.get(int(movie_id), "Unknown"),
                 "genres": self.genres.get(int(movie_id), ""),
-                "score": 5.0,  # Lajkovani filmovi imaju max score
+                "score": 5.0,
                 "reason": "You liked this before!",
                 "llm_description": self.get_llm_description(self.movies.get(int(movie_id), f"Movie {movie_id}"), self.genres.get(int(movie_id), "")),
                 "agent_mood": "You loved this one!"
             })
         
-        # 2. Ako treba još preporuka, dodaj nove filmove
         if len(results) < n:
             remaining = n - len(results)
-            
-            # Uzmi popularne filmove koji nisu liked/disliked
             popular_items = self.ratings_matrix.mean().sort_values(ascending=False)
             popular_items = popular_items[~popular_items.index.isin(liked + disliked)]
-            
-            # Filter po mood-u
             movie_ids = list(popular_items.index)
             movie_ids = self._filter_by_mood(movie_ids, mood)
             
