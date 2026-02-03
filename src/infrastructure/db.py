@@ -14,6 +14,7 @@ class EventModel(Base):
     item_id = Column(String)
     timestamp = Column(DateTime)
     context = Column(Text)
+    status = Column(String, default='pending')  # pending, processed
 
 class FeedbackModel(Base):
     __tablename__ = 'feedback'

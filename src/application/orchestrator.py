@@ -1,20 +1,39 @@
 from src.domain.interfaces import Recommender, Learner, Sensor, Actuator
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 class Orchestrator:
-    def __init__(self, recommender: Recommender, learner: Learner, sensor: Sensor, actuator: Actuator):
+    def __init__(self, recommender: Recommender, learner: Learner, sensor: Actuator, actuator: Actuator):
         self.recommender = recommender
         self.learner = learner
         self.sensor = sensor
         self.actuator = actuator
 
     def step(self, user_name: str, mood: str = "neutral") -> List[Dict[str, Any]]:
-        # Sense
-        data = self.sensor.sense()
+        """Called by HTTP endpoints - just returns recommendations"""
         # Think
         recommendations = self.recommender.recommend(user_name, mood)
+        return recommendations
+
+    def tick(self, event: Optional[Dict[str, Any]] = None) -> str:
+        """
+        Process one event from queue (called by background runner).
+        Returns: 'NoWork' if no event, 'Processed' if event was processed.
+        """
+        if not event:
+            return "NoWork"
+        
+        # Sense
+        context_data = self.sensor.sense()
+        
+        # Think (using event data)
+        user_name = event.get('user_name') or event.get('user_id', 'unknown')
+        mood = event.get('mood', 'neutral')
+        recommendations = self.recommender.recommend(user_name, mood)
+        
         # Act
         self.actuator.act(recommendations)
-        # Learn (from data)
-        self.learner.learn(data)
-        return recommendations
+        
+        # Learn
+        self.learner.learn(event)
+        
+        return "Processed"
