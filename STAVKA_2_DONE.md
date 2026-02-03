@@ -1,4 +1,4 @@
-# Stavka 2: Thin Web Layer - IMPLEMENTIRANO ✅
+# Stavka 2: Thin Web Layer - IMPLEMENTIRANO 
 
 ## Šta je urađeno:
 
@@ -11,11 +11,11 @@ Servisni sloj sa svom poslovnom logikom:
 - `get_user_ratings()` - Dohvaćanje i filtriranje ocjena
 
 **Odgovornosti (prebačene iz api.py):**
-- ✅ Validacija input podataka
-- ✅ Pozivanje `learner.learn()`
-- ✅ Pozivanje `recommender.update_model()`
-- ✅ Agregacija statistika (Counter, filtriranje)
-- ✅ DB query i mapping rezultata
+-  Validacija input podataka
+-  Pozivanje `learner.learn()`
+-  Pozivanje `recommender.update_model()`
+-  Agregacija statistika (Counter, filtriranje)
+-  DB query i mapping rezultata
 
 ### 2. Ažuriran `src/interface/api.py` - TANAK SLOJ
 
@@ -23,7 +23,7 @@ Servisni sloj sa svom poslovnom logikom:
 ```python
 @app.post("/feedback")
 def feedback(feedback_data: dict, orchestrator: Orchestrator = Depends(...)):
-    # POSLOVNA LOGIKA U API SLOJU! ❌
+    # POSLOVNA LOGIKA U API SLOJU! 
     result = orchestrator.learner.learn(feedback_data)
     if result.get("status") == "exists":
         return {"status": "already_rated", ...}
@@ -35,7 +35,7 @@ def feedback(feedback_data: dict, orchestrator: Orchestrator = Depends(...)):
 ```python
 @app.post("/feedback")
 def feedback(feedback_data: dict, service: FeedbackService = Depends(...)):
-    # SAMO DELEGACIJA! ✅
+    # SAMO DELEGACIJA! 
     return service.process_feedback(feedback_data)
 ```
 
@@ -62,11 +62,11 @@ Servis se injektuje u endpoint-e preko FastAPI Depends.
 
 | **Aspekt** | **PRE (Loše)** | **POSLE (Dobro)** |
 |------------|----------------|-------------------|
-| **Poslovna logika** | U api.py ❌ | U FeedbackService ✅ |
-| **Validacija** | U endpoint-ima ❌ | U servisu ✅ |
-| **DB query** | Direktno u api.py ❌ | U servisu ✅ |
-| **Agregacija** | Counter u api.py ❌ | U servisu ✅ |
-| **Model update** | orchestrator.recommender.update_model() ❌ | U servisu ✅ |
+| **Poslovna logika** | U api.py  | U FeedbackService  |
+| **Validacija** | U endpoint-ima  | U servisu  |
+| **DB query** | Direktno u api.py  | U servisu  |
+| **Agregacija** | Counter u api.py  | U servisu  |
+| **Model update** | orchestrator.recommender.update_model()  | U servisu  |
 | **Testabilnost** | Teško (zavisi od FastAPI) | Lako (servis je prost Python class) |
 | **Debljina sloja** | Debeo (100+ linija logike) | Tanak (samo delegacija) |
 
@@ -101,10 +101,10 @@ Servis se injektuje u endpoint-e preko FastAPI Depends.
 ## Test rezultati:
 
 ```
-✅ /feedback - Validacija i model update u servisu
-✅ /stats - Agregacija (liked/disliked count) u servisu
-✅ /ratings - Filtriranje po mood-u u servisu
-✅ Validacija greški u servisu (ne u web sloju)
+ /feedback - Validacija i model update u servisu
+ /stats - Agregacija (liked/disliked count) u servisu
+ /ratings - Filtriranje po mood-u u servisu
+ Validacija greški u servisu (ne u web sloju)
 ```
 
 ---
@@ -128,6 +128,6 @@ build/
 
 ---
 
-**STATUS: ✅ GOTOVO - Stavka 2 kompletno implementirana**
+**STATUS:  GOTOVO - Stavka 2 kompletno implementirana**
 
 Web sloj je sada **TANAK** (thin) - samo prima request, delegira na servis, i vraća response. Sva poslovna logika je u application sloju gde joj je i mesto!
