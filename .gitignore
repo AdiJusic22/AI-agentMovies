@@ -1,6 +1,45 @@
-.venv/
+# Python cache
 __pycache__/
+*.py[cod]
+*$py.class
+*.so
 *.pyc
+
+# Virtual Environment
+venv/
+.venv/
+env/
+ENV/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.vs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Databases
+*.db
 data/events.db
+data/feedback.db
+
+# Testing
 .pytest_cache/
+.coverage
+htmlcov/
+
+# Logs
 *.log
+
+# Build outputs
+bin/
+obj/
+node_modules/
+dist/
+build/
+*.egg-info/
