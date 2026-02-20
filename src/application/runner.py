@@ -44,21 +44,22 @@ class BackgroundRunner:
             ).order_by(EventModel.timestamp).first()
             
             if event:
-                # Mark as processed
-                event.status = 'processed'
+                # Mark as processing
+                event.status = 'processing'
                 db.commit()
                 
                 # Convert to dict
                 return {
                     'id': event.id,
                     'user_id': event.user_id,
-                    'user_name': event.user_id,  # Use user_id as user_name
+                    'user_name': event.user_name or event.user_id,
                     'session_id': event.session_id,
                     'event_type': event.event_type,
                     'item_id': event.item_id,
+                    'rating': event.rating,
+                    'mood': event.mood or 'neutral',
                     'timestamp': event.timestamp,
                     'context': event.context,
-                    'mood': 'neutral'  # Default mood
                 }
             return None
         except Exception as e:
@@ -82,11 +83,30 @@ class BackgroundRunner:
             result = "NoWork"
             logger.debug(f"Tick: {result} (total no-work: {self.total_no_work})")
         else:
-            result = self.orchestrator.tick(event)
-            self.total_processed += 1
-            logger.info(f"Tick: {result} - Event {event['id']} (total processed: {self.total_processed})")
+            try:
+                result = self.orchestrator.tick(event)
+                self._mark_event_status(event['id'], 'processed')
+                self.total_processed += 1
+                logger.info(f"Tick: {result} - Event {event['id']} (total processed: {self.total_processed})")
+            except Exception as e:
+                self._mark_event_status(event['id'], 'failed')
+                logger.error(f"Error processing event {event['id']}: {e}")
+                result = "Failed"
         
         return result
+
+    def _mark_event_status(self, event_id: str, status: str) -> None:
+        db = SessionLocal()
+        try:
+            event = db.query(EventModel).filter(EventModel.id == event_id).first()
+            if event:
+                event.status = status
+                db.commit()
+        except Exception as e:
+            logger.error(f"Error updating event status {event_id} -> {status}: {e}")
+            db.rollback()
+        finally:
+            db.close()
     
     async def run(self):
         """

@@ -33,7 +33,8 @@ class Orchestrator:
         # Act
         self.actuator.act(recommendations)
         
-        # Learn
-        self.learner.learn(event)
+        # Learn (only when feedback fields exist)
+        if event.get('rating') is not None and event.get('mood'):
+            self.learner.learn(event)
         
         return "Processed"

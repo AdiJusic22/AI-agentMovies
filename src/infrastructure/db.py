@@ -9,12 +9,15 @@ class EventModel(Base):
     __tablename__ = 'events'
     id = Column(String, primary_key=True)
     user_id = Column(String)
+    user_name = Column(String)
     session_id = Column(String)
     event_type = Column(String)
     item_id = Column(String)
+    rating = Column(Integer)
+    mood = Column(String)
     timestamp = Column(DateTime)
     context = Column(Text)
-    status = Column(String, default='pending')  # pending, processed
+    status = Column(String, default='pending')  # pending, processing, processed, failed
 
 class FeedbackModel(Base):
     __tablename__ = 'feedback'

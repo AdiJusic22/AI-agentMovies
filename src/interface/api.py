@@ -83,9 +83,12 @@ def ingest_event(event: dict):
         event_model = EventModel(
             id=str(uuid.uuid4()),
             user_id=event.get('user_id', 'unknown'),
+            user_name=event.get('name') or event.get('user_name'),
             session_id=event.get('session_id', 'unknown'),
             event_type=event.get('event_type', 'unknown'),
             item_id=event.get('item_id', ''),
+            rating=event.get('rating'),
+            mood=event.get('mood'),
             timestamp=datetime.now(),
             context=str(event.get('context', {})),
             status='pending'
@@ -140,11 +143,15 @@ def get_pending_events():
     db = SessionLocal()
     try:
         pending_count = db.query(EventModel).filter(EventModel.status == 'pending').count()
+        processing_count = db.query(EventModel).filter(EventModel.status == 'processing').count()
         processed_count = db.query(EventModel).filter(EventModel.status == 'processed').count()
+        failed_count = db.query(EventModel).filter(EventModel.status == 'failed').count()
         return {
             "pending": pending_count,
+            "processing": processing_count,
             "processed": processed_count,
-            "total": pending_count + processed_count
+            "failed": failed_count,
+            "total": pending_count + processing_count + processed_count + failed_count
         }
     finally:
         db.close()
