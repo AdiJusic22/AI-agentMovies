@@ -25,9 +25,9 @@ class Orchestrator:
         # Sense
         context_data = self.sensor.sense()
         
-        # Think (using event data)
-        user_name = event.get('user_name') or event.get('user_id', 'unknown')
-        mood = event.get('mood', 'neutral')
+        # Think (use context data as fallback)
+        user_name = event.get('user_name') or event.get('user_id') or context_data.get('user_id', 'unknown')
+        mood = event.get('mood') or context_data.get('mood', 'neutral')
         recommendations = self.recommender.recommend(user_name, mood)
         
         # Act

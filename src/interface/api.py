@@ -4,15 +4,13 @@ from fastapi.responses import RedirectResponse
 from src.application.orchestrator import Orchestrator
 from src.application.runner import BackgroundRunner
 from src.application.feedback_service import FeedbackService
+from src.application.event_service import EventQueueService
 from src.infrastructure.recommender_impl import MLRecommender
 from src.infrastructure.learner_impl import DummyLearner
 from src.infrastructure.sensor_impl import DummySensor
 from src.infrastructure.actuator_impl import DummyActuator
-from src.infrastructure.db import SessionLocal, FeedbackModel, EventModel
 from typing import Optional
 import asyncio
-from datetime import datetime
-import uuid
 
 app = FastAPI()
 
@@ -61,6 +59,9 @@ def get_feedback_service():
         learner=DummyLearner()
     )
 
+def get_event_service():
+    return EventQueueService()
+
 
 
 @app.get("/recommend")
@@ -73,34 +74,12 @@ def recommend(name: str, mood: str = "neutral", orchestrator: Orchestrator = Dep
         return {"error": str(e)}
 
 @app.post("/events")
-def ingest_event(event: dict):
+def ingest_event(event: dict, service: EventQueueService = Depends(get_event_service)):
     """
     Ingest event into the queue for background processing.
     Events are stored as 'pending' and will be processed by the runner.
     """
-    db = SessionLocal()
-    try:
-        event_model = EventModel(
-            id=str(uuid.uuid4()),
-            user_id=event.get('user_id', 'unknown'),
-            user_name=event.get('name') or event.get('user_name'),
-            session_id=event.get('session_id', 'unknown'),
-            event_type=event.get('event_type', 'unknown'),
-            item_id=event.get('item_id', ''),
-            rating=event.get('rating'),
-            mood=event.get('mood'),
-            timestamp=datetime.now(),
-            context=str(event.get('context', {})),
-            status='pending'
-        )
-        db.add(event_model)
-        db.commit()
-        return {"status": "queued", "event_id": event_model.id}
-    except Exception as e:
-        db.rollback()
-        return {"error": str(e)}
-    finally:
-        db.close()
+    return service.enqueue_event(event)
 
 @app.post("/feedback")
 def feedback(feedback_data: dict, service: FeedbackService = Depends(get_feedback_service)):
@@ -138,20 +117,6 @@ def get_runner_stats():
 
 
 @app.get("/runner/events")
-def get_pending_events():
+def get_pending_events(service: EventQueueService = Depends(get_event_service)):
     """Get count of pending events in queue."""
-    db = SessionLocal()
-    try:
-        pending_count = db.query(EventModel).filter(EventModel.status == 'pending').count()
-        processing_count = db.query(EventModel).filter(EventModel.status == 'processing').count()
-        processed_count = db.query(EventModel).filter(EventModel.status == 'processed').count()
-        failed_count = db.query(EventModel).filter(EventModel.status == 'failed').count()
-        return {
-            "pending": pending_count,
-            "processing": processing_count,
-            "processed": processed_count,
-            "failed": failed_count,
-            "total": pending_count + processing_count + processed_count + failed_count
-        }
-    finally:
-        db.close()
+    return service.get_queue_stats()
