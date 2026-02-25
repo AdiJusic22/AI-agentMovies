@@ -4,8 +4,17 @@ from typing import Dict, Any
 from datetime import datetime
 
 class DummyLearner(Learner):
+    def __init__(self, recommender=None):
+        """
+        Initialize learner with optional recommender reference for model updates.
+        """
+        self.recommender = recommender
+    
     def learn(self, event: Dict[str, Any]) -> Dict[str, Any]:
-        """Save feedback; prevent duplicates per user_name + mood + item_id."""
+        """
+        Save feedback and trigger model update.
+        Pravi learning: nakon što spremi feedback, ažurira ML model.
+        """
         db = SessionLocal()
         try:
             user_name = event.get('name') or event.get('user_name')
@@ -36,10 +45,16 @@ class DummyLearner(Learner):
             )
             db.add(feedback)
             db.commit()
-            print(f"Learned from feedback: {event}")
+            print(f"[LEARN] Learned from feedback: {user_name} + {mood} → item {item_id} (rating {rating})")
+            
+            # ⭐ REAL LEARNING: Ažurat ML model sa novim feedback-om
+            if self.recommender:
+                self.recommender.update_model()
+                print(f"[LEARN] Model updated after feedback")
+            
             return {"status": "created", "rating": rating}
         except Exception as e:
-            print(f"Error saving feedback: {e}")
+            print(f"[LEARN] Error saving feedback: {e}")
             db.rollback()
             return {"status": "error", "error": str(e)}
         finally:

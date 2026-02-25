@@ -14,16 +14,18 @@ import asyncio
 
 app = FastAPI()
 
-# Global runner instance
+# Global instances
 runner: Optional[BackgroundRunner] = None
+recommender_instance: Optional[MLRecommender] = None
 
 @app.on_event("startup")
 async def startup_event():
     """Start the background runner on application startup."""
-    global runner
+    global runner, recommender_instance
+    recommender_instance = MLRecommender()
     orchestrator = Orchestrator(
-        recommender=MLRecommender(),
-        learner=DummyLearner(),
+        recommender=recommender_instance,
+        learner=DummyLearner(recommender=recommender_instance),
         sensor=DummySensor(),
         actuator=DummyActuator()
     )
@@ -46,17 +48,23 @@ app.mount("/static", StaticFiles(directory="static", html=True), name="static")
 
 # Dependency injection
 def get_orchestrator():
+    global recommender_instance
+    if recommender_instance is None:
+        recommender_instance = MLRecommender()
     return Orchestrator(
-        recommender=MLRecommender(),
-        learner=DummyLearner(),
+        recommender=recommender_instance,
+        learner=DummyLearner(recommender=recommender_instance),
         sensor=DummySensor(),
         actuator=DummyActuator()
     )
 
 def get_feedback_service():
+    global recommender_instance
+    if recommender_instance is None:
+        recommender_instance = MLRecommender()
     return FeedbackService(
-        recommender=MLRecommender(),
-        learner=DummyLearner()
+        recommender=recommender_instance,
+        learner=DummyLearner(recommender=recommender_instance)
     )
 
 def get_event_service():
