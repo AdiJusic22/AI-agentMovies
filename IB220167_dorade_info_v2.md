@@ -50,30 +50,57 @@
     - Endpoint: /ratings (delegira na FeedbackService.get_user_ratings)
     - Dependency: get_feedback_service()
 
-3. Learn integracija u autonomnom tick-u (obavezna crvena zastavica)
+3. Learn integracija u autonomnom tick-u - PRAVI Collaborative Filtering (obavezna crvena zastavica)
 
 - Šta je bilo prije:
   - Event iz runnera nije imao polja 'name' i 'rating' koja DummyLearner očekuje.
   - Orchestrator.tick() pozivao learner.learn(event), ali learner nije mogao raditi jer su nedostajala polja.
-  - Nije bilo demo-a koji pokazuje da isti input mijenja preporuke nakon feedbacka.
+  - Nije bilo demo-a koji pokazuje da se preporuke mijenjaju nakon feedbacka.
+  - Trebala je samo memorija (lookup u bazi), a ne ML model.
 
 - Šta je poslije:
+  - ⭐ PRAVI LEARNING: Implementiran mlRecommender sa **Collaborative Filtering** (cosine similarity)
   - EventModel proširena sa poljima user_name, rating, mood.
-  - DummyLearner modifikovan da prihvata i 'name' i 'user_name' (fleksibilnost).
-  - Kreiran demo script test_learn_feedback_flow.py koji pokazuje /recommend → /feedback → /recommend flow.
-  - Demo dokazuje da se isti input (npr. "Alice" + "happy") vraća različite preporuke nakon feedbacka (liked item na vrhu).
+  - DummyLearner sada:
+    * Sprema feedback u FeedbackModel
+    * Poziva recommender.update_model() da učita nove feedback-e u ratings matricu
+    * Cosine similarity pronalazi SLIČNE KORISNIKE na osnovu rating history
+  - MLRecommender sada koristi:
+    * Cosine similarity između korisnika (ne KNN) za fleksibilnost
+    * Pronalazi slične korisnike koji su dali visokim ocjenama filmovima
+    * Vraća preporuke filmova koje su slični korisnici voljeli
+    * Fallback: popularne preporuke za nove korisnike
+  - Kreiran demo script test_collaborative_learning.py koji pokazuje:
+    * Alice dobija inicijalne (popularne) preporuke
+    * Alice i Bob daju feedback (like određene filmove)
+    * Alice dobija nove preporuke na osnovu Bob-a (sličan korinik)
+    * Agent je ZAISTA naučio kroz collaborative intelligence!
 
 - Gdje se promjena vidi u kodu (putanja/fajl/klasa/metoda):
   - src/infrastructure/db.py
     - Model: EventModel (dodana polja user_name, rating, mood)
   - src/infrastructure/learner_impl.py
     - Klasa: DummyLearner
-    - Metoda: learn() (prihvata i 'name' i 'user_name', validacija required fields)
+    - Konstruktor: __init__(self, recommender) - sada prima recommender referencu
+    - Metoda: learn() (sprema feedback + poziva recommender.update_model() za ML)
+  - src/infrastructure/recommender_impl.py (KOMPLETNO REENGINEERED)
+    - Klasa: MLRecommender
+    - Metoda: recommend() (vraća liked + collaborative + popular preporuke)
+    - Metoda: _get_collaborative_recommendations() (cosine similarity pronalazi slične korisnike)
+    - Metoda: _get_popular_recommendations() (fallback za nove korisnike)
+    - Metoda: _load_feedback_ratings() (učitava feedback iz baze u matricu)
+    - Metoda: update_model() (učitava nove feedback-e za cosine similarity)
+  - src/interface/api.py
+    - Globalna instance: recommender_instance (dijeljena između learner-a i orchestrator-a)
+    - Startup: recommender se kreira jednom i koristi se svuda
   - src/application/orchestrator.py
     - Klasa: Orchestrator
     - Metoda: tick() (guard za Learn poziv: samo ako postoji rating)
-  - test_learn_feedback_flow.py
-    - Demo script za reproducibilan test Learn integracije
+  - test_collaborative_learning.py
+    - Demo script koji pokazuje pravi ML learning (ne samo memorija)
+    - Korak 1: Alice dobija preporuke
+    - Korak 2: Alice i Bob daju feedback
+    - Korak 3: Alice dobija drugačije preporuke jer agent pronalazi Bob-a kao sličnog korisnika
 
 
 4. Queue status tranzicije (obavezna crvena zastavica) + Thin web za /events (preporučena) + Sensor kontekst u Think fazi (preporučena)
